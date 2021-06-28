@@ -1,6 +1,6 @@
 # SmutSmiter5000 
 
-The SmutSmiter5000 (name subject to change) is a script written to ease library moderation in Space Station 13 on the [/tg/station](https://github.com/tgstation/tgstation) codebase through [AtlantaNed's old StatBus](https://github.com/nfreader/slimbus).
+SmutSmiter5000 (name subject to change) is a script written to ease library moderation in Space Station 13 on the [/tg/station](https://github.com/tgstation/tgstation) codebase through [AtlantaNed's old StatBus](https://github.com/nfreader/slimbus).
 
 Don't judge the code quality too hard, it was first written as a script in a very short about of time and then hastily and forcefully remade.
 
