@@ -1,0 +1,3 @@
+ntlk
+requests
+bs4
