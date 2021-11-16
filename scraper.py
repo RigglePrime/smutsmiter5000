@@ -119,8 +119,8 @@ def preprocess_statbus_text(s: str) -> str:
         ('„', '"'),
         ('”', '"'),
         ("’", "'"),
-        (".\n", " "),
-        ("\n", ". ")
+        ("\n", ". "),
+        (" . ", ". ")
     )
 
     # Remove empty sentences
@@ -128,7 +128,7 @@ def preprocess_statbus_text(s: str) -> str:
     # Replace multiple spaces with only one
     s = re.sub(" {2,}", " ", s)
 
-    return s
+    return s.strip(".").strip()
 
 def generate_library(session_id):
     """
