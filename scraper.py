@@ -15,6 +15,8 @@ from tqdm import tqdm
 
 BASE_LINK = "https://sb.atlantaned.space/library/"
 LIBRARY_PATH = "./library/"
+NORMAL = "normal"
+DELETED = "deleted"
 
 class InvalidSessionException(Exception): pass
 class UnknownBookFormatException(Exception): pass
@@ -146,16 +148,17 @@ def generate_library(session_id = None, overwrite_existing_books = False):
     """
     if not session_id: session_id = input("Please input your PHPSESSID: ")
 
-    if overwrite_existing_books:
-        last_downloaded_id = 1
-    else:
+    last_downloaded_id = 1
+    if not overwrite_existing_books:
         library = pathlib.Path(LIBRARY_PATH)
-
-        # Ensure lists have at least one item
-        last_downloaded_id = max(
-            max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath("normal")) or [1])]),
-            max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath("deleted")) or [1])])
-        )
+        try:
+            # Ensure lists have at least one item
+            last_downloaded_id = max(
+                max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath(NORMAL)) or [1])]),
+                max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath(DELETED)) or [1])])
+            )
+        except FileNotFoundError:
+            pass # Lazyness, have an if when you can have an exception
 
     r = req.get(BASE_LINK, cookies={"PHPSESSID": session_id})
     bs = BeautifulSoup(r.text.strip(), "html.parser")
@@ -176,8 +179,8 @@ def generate_library_range(session_id, id_range: tuple[int, int]):
     """
 
     library = pathlib.Path(LIBRARY_PATH)
-    normal_path = library.joinpath("normal")
-    deleted_path = library.joinpath("deleted")
+    normal_path = library.joinpath(NORMAL)
+    deleted_path = library.joinpath(DELETED)
 
     if not library.exists(): os.mkdir(library)
     if not normal_path.exists(): os.mkdir(normal_path)
@@ -208,11 +211,11 @@ def generate_library_range(session_id, id_range: tuple[int, int]):
                 book_path = deleted_path.joinpath(str(book_id) + ".txt")
             else:
                 book_path = normal_path.joinpath(str(book_id) + ".txt")
-            with open(book_path, "w") as f:
+            with open(book_path, "w", encoding="utf-8") as f:
                 f.write(book.text)
                 f.flush()
                 f.close()
             metadata.append((book.id, book.title, book.author, book.ckey, book.deleted, book.time_published, book.round_published))
     finally:
-        df = pd.merge(df, pd.DataFrame(metadata, columns=["ID", "Title", "Author", "CKEY", "Deleted", "Time Published", "Round Published"]))
+        df = pd.merge(df, pd.DataFrame(metadata, columns=["ID", "Title", "Author", "CKEY", "Deleted", "Time Published", "Round Published"]), axis="columns")
         df.to_csv(library.joinpath("book_metadata.csv"))
