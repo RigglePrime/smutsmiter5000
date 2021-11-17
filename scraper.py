@@ -1,4 +1,5 @@
 import re
+from types import CodeType
 from typing import Union
 import unicodedata
 import pathlib
@@ -10,12 +11,14 @@ from helpers import replace_mul
 from bs4 import BeautifulSoup
 import requests as req
 import pandas as pd
+from tqdm import tqdm
 
 BASE_LINK = "https://sb.atlantaned.space/library/"
 LIBRARY_PATH = "./library/"
 
 class InvalidSessionException(Exception): pass
 class UnknownBookFormatException(Exception): pass
+class BookUnavailableException(Exception): pass
 
 class StatbusBook():
     id: int
@@ -45,9 +48,15 @@ class StatbusBook():
 
         footer = soup.find("div", {"class": "card-footer"})
         # The datetime, in ISO format, is located in the card footer in a tag called time, set as a property datetime
-        self.time_published = datetime.fromisoformat(footer.find("time")["datetime"])
+        try:
+            self.time_published = datetime.fromisoformat(footer.find("time")["datetime"])
+        except:
+            self.time_published = datetime.fromtimestamp(0)
         # The round ID is located as text in an anchor in the footer
-        self.round_published = int(footer.find("a").get_text())
+        try:
+            self.round_published = int(footer.find("a").get_text())
+        except:
+            self.round_published = 0
 
     @classmethod
     def from_html(cls, html: str):
@@ -76,10 +85,11 @@ def extract_text_from_statbus(html: Union[str, BeautifulSoup]) -> str:
     bs = html
     if not type(bs) == BeautifulSoup:
         bs = BeautifulSoup(html, "html.parser")
-    bs = bs.find("div", {"class": "card-body"})
-    if not bs:
+    body = bs.find("div", {"class": "card-body"})
+    if not body:
+        if ("Slim Application Error" in bs.get_text()): raise BookUnavailableException("Page returned an error")
         raise UnknownBookFormatException("Book could not be loaded correctly. Check your PHPSESSID cookie and if the book is available to read.")
-    return bs.get_text(separator= " ")
+    return body.get_text(separator= " ")
 
 def check_deleted(html: Union[str, BeautifulSoup]) -> bool:
     """
@@ -130,10 +140,23 @@ def preprocess_statbus_text(s: str) -> str:
 
     return s.strip(".").strip()
 
-def generate_library(session_id):
+def generate_library(session_id = None, overwrite_existing_books = False):
     """
     Generates a local library by scraping StatBus (thanks Ned)
     """
+    if not session_id: session_id = input("Please input your PHPSESSID: ")
+
+    if overwrite_existing_books:
+        last_downloaded_id = 1
+    else:
+        library = pathlib.Path(LIBRARY_PATH)
+
+        # Ensure lists have at least one item
+        last_downloaded_id = max(
+            max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath("normal")) or [1])]),
+            max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath("deleted")) or [1])])
+        )
+
     r = req.get(BASE_LINK, cookies={"PHPSESSID": session_id})
     bs = BeautifulSoup(r.text.strip(), "html.parser")
     # Get the table of all books
@@ -143,13 +166,13 @@ def generate_library(session_id):
     anchor = table.find("a")
     if not anchor: raise Exception("Could not find an anchor tag in the book list, something must be wrong.")
     # /library/10139
-    last_id = anchor["href"].split("/")[-1]
+    last_id = int(anchor["href"].split("/")[-1])
 
-    generate_library_range(session_id, (1, last_id))
+    generate_library_range(session_id, (last_downloaded_id, last_id + 1))
 
 def generate_library_range(session_id, id_range: tuple[int, int]):
     """
-    Generates a local library from a range
+    Generates a local library from a range, [start, end)
     """
 
     library = pathlib.Path(LIBRARY_PATH)
@@ -160,24 +183,36 @@ def generate_library_range(session_id, id_range: tuple[int, int]):
     if not normal_path.exists(): os.mkdir(normal_path)
     if not deleted_path.exists(): os.mkdir(deleted_path)
 
-    metadata = []
-    for book_id in range(*id_range):
-        while True:
-            try:
-                book = StatbusBook.from_id(session_id, book_id)
-                break
-            except InvalidSessionException:
-                session_id = input("Cookie invalid. Please insert a new PHPSESSID cookie: ")
-        
-        if book.deleted:
-            book_path = deleted_path.joinpath(str(book_id), book.title, ".txt")
-        else:
-            book_path = normal_path.joinpath(str(book_id), " ", book.title, ".txt")
-        with open(book_path, "w") as f:
-            f.write(book)
-            f.flush()
-            f.close()
-        metadata.append((book.id, book.title, book.author, book.ckey, book.deleted, book.time_published, book.round_published))
+    df_path = library.joinpath("book_metadata.csv")
+    if os.path.exists(df_path):
+        df = pd.read_csv(df_path)
+    else: df = pd.DataFrame()
 
-    df = pd.DataFrame(metadata, columns=["ID", "Title", "Author", "CKEY", "Deleted", "Time Published", "Round Published"])
-    df.to_csv("book_metadata.csv")
+    metadata = []
+    print(f"Downloading library books from {id_range[0]} to {id_range[1]}")
+    try:
+        for book_id in tqdm(range(*id_range)):
+            book = None
+            while True:
+                try:
+                    book = StatbusBook.from_id(session_id, book_id)
+                    break
+                except InvalidSessionException:
+                    session_id = input("Cookie invalid. Please insert a new PHPSESSID cookie: ")
+                except BookUnavailableException:
+                    #print("Warning: book {} is not available".format(book_id))
+                    break
+            if not book: continue
+            
+            if book.deleted:
+                book_path = deleted_path.joinpath(str(book_id) + ".txt")
+            else:
+                book_path = normal_path.joinpath(str(book_id) + ".txt")
+            with open(book_path, "w") as f:
+                f.write(book.text)
+                f.flush()
+                f.close()
+            metadata.append((book.id, book.title, book.author, book.ckey, book.deleted, book.time_published, book.round_published))
+    finally:
+        df = pd.merge(df, pd.DataFrame(metadata, columns=["ID", "Title", "Author", "CKEY", "Deleted", "Time Published", "Round Published"]))
+        df.to_csv(library.joinpath("book_metadata.csv"))
