@@ -154,8 +154,8 @@ def generate_library(session_id = None, overwrite_existing_books = False):
         try:
             # Ensure lists have at least one item
             last_downloaded_id = max(
-                max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath(NORMAL)) or [1])]),
-                max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath(DELETED)) or [1])])
+                max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath(NORMAL)) or ["1"])]),
+                max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath(DELETED)) or ["1"])])
             )
         except FileNotFoundError:
             pass # Lazyness, have an if when you can have an exception
@@ -216,6 +216,8 @@ def generate_library_range(session_id, id_range: tuple[int, int]):
                 f.flush()
                 f.close()
             metadata.append((book.id, book.title, book.author, book.ckey, book.deleted, book.time_published, book.round_published))
-    finally:
-        df = pd.merge(df, pd.DataFrame(metadata, columns=["ID", "Title", "Author", "CKEY", "Deleted", "Time Published", "Round Published"]), axis="columns")
-        df.to_csv(library.joinpath("book_metadata.csv"))
+    finally: # TODO: make sure this works fine
+        df = df.append(pd.DataFrame(metadata, columns=["ID", "Title", "Author", "CKEY", "Deleted", "Time Published", "Round Published"]))
+        print(metadata)
+        print(df)
+        df.to_csv(library.joinpath("book_metadata.csv"), index="ID")
