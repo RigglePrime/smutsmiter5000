@@ -1,4 +1,4 @@
-# SmutSmiter5000 
+# SmutSmiter5000
 
 SmutSmiter5000 (name subject to change) is a script written to ease library moderation in Space Station 13 on the [/tg/station](https://github.com/tgstation/tgstation) codebase through [AtlantaNed's old StatBus](https://github.com/nfreader/slimbus).
 
@@ -14,7 +14,7 @@ Install packages located in `requirements.txt`. This can be done using `pip inst
 
 ## Running the code
 
-1. Go to StatBus and log in
+1. Go to [StatBus](https://sb.atlantaned.space/) and log in
 2. Locate your cookies.
     - Chrome: F12 -> Application -> Storage -> Cookies
     - Firefox: F12 -> Storage -> Cookies
