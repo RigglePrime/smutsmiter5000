@@ -101,7 +101,7 @@ def check_deleted(html: Union[str, BeautifulSoup]) -> bool:
     if not type(bs) == BeautifulSoup:
         bs = BeautifulSoup(html, "html.parser")
     bs = bs.find("div", {"class": "alert alert-danger"})
-    return (bs and "This book has been deleted" in bs.get_text())
+    return (bool(bs) and "This book has been deleted" in bs.get_text())
 
 def try_extract_id(html: Union[str, BeautifulSoup]) -> int:
     """
