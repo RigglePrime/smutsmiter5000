@@ -168,7 +168,7 @@ def generate_library(session_id = None, overwrite_existing_books = False):
     # Find the first anchor, which should be the link to the first book
     anchor = table.find("a")
     if not anchor: raise Exception("Could not find an anchor tag in the book list, something must be wrong.")
-    # /library/10139
+    # /library/<number>
     last_id = int(anchor["href"].split("/")[-1])
 
     generate_library_range(session_id, (last_downloaded_id, last_id + 1))
