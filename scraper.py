@@ -158,7 +158,7 @@ def generate_library(session_id = None, overwrite_existing_books = False):
                 max([int(x.replace(".txt", "")) for x in (os.listdir(library.joinpath(DELETED)) or ["1"])])
             )
         except FileNotFoundError:
-            pass # Lazyness, have an if when you can have an exception
+            pass # Lazyness, why have an if when you can have an exception
 
     r = req.get(BASE_LINK, cookies={"PHPSESSID": session_id})
     bs = BeautifulSoup(r.text.strip(), "html.parser")
