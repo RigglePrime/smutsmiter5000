@@ -218,6 +218,4 @@ def generate_library_range(session_id, id_range: tuple[int, int]):
             metadata.append((book.id, book.title, book.author, book.ckey, book.deleted, book.time_published, book.round_published))
     finally: # TODO: make sure this works fine
         df = df.append(pd.DataFrame(metadata, columns=["ID", "Title", "Author", "CKEY", "Deleted", "Time Published", "Round Published"]))
-        print(metadata)
-        print(df)
         df.to_csv(library.joinpath("book_metadata.csv"), index="ID")
