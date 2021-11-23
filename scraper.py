@@ -5,6 +5,7 @@ import unicodedata
 import pathlib
 import os
 from datetime import datetime
+from multiprocessing import Pool
 
 from helpers import replace_mul
 
@@ -142,7 +143,7 @@ def preprocess_statbus_text(s: str) -> str:
 
     return s.strip(".").strip()
 
-def generate_library(session_id = None, overwrite_existing_books = False):
+def generate_library(session_id = None, overwrite_existing_books = False, workers = 4):
     """
     Generates a local library by scraping StatBus (thanks Ned)
     """
@@ -171,12 +172,13 @@ def generate_library(session_id = None, overwrite_existing_books = False):
     # /library/<number>
     last_id = int(anchor["href"].split("/")[-1])
 
-    generate_library_range(session_id, (last_downloaded_id, last_id + 1))
+    generate_library_range(session_id, (last_downloaded_id, last_id + 1), workers=workers)
 
-def generate_library_range(session_id, id_range: tuple[int, int]):
+def generate_library_range(session_id, id_range: tuple[int, int], workers = 4):
     """
     Generates a local library from a range, [start, end)
     """
+    pool = Pool(processes=workers)
 
     library = pathlib.Path(LIBRARY_PATH)
     normal_path = library.joinpath(NORMAL)
@@ -194,11 +196,12 @@ def generate_library_range(session_id, id_range: tuple[int, int]):
     metadata = []
     print(f"Downloading library books from {id_range[0]} to {id_range[1]}")
     try:
-        for book_id in tqdm(range(*id_range)):
+        responses = [pool.apply_async(StatbusBook.from_id, args=(session_id, x,)) for x in range(*id_range)]
+        for res in tqdm(responses):
             book = None
             while True:
                 try:
-                    book = StatbusBook.from_id(session_id, book_id)
+                    book: StatbusBook = res.get()
                     break
                 except InvalidSessionException:
                     session_id = input("Cookie invalid. Please insert a new PHPSESSID cookie: ")
@@ -208,9 +211,9 @@ def generate_library_range(session_id, id_range: tuple[int, int]):
             if not book: continue
             
             if book.deleted:
-                book_path = deleted_path.joinpath(str(book_id) + ".txt")
+                book_path = deleted_path.joinpath(str(book.id) + ".txt")
             else:
-                book_path = normal_path.joinpath(str(book_id) + ".txt")
+                book_path = normal_path.joinpath(str(book.id) + ".txt")
             with open(book_path, "w", encoding="utf-8") as f:
                 f.write(book.text)
                 f.flush()
