@@ -176,6 +176,22 @@ def generate_library(session_id = None, overwrite_existing_books = False, worker
 
     generate_library_range(session_id, (last_downloaded_id, last_id + 1), workers=workers)
 
+def from_id_wrapper(session_id, id):
+    """
+    Wrapper function that asks for a new session ID cookie if the old one has expired
+    """
+    book = None
+    while True:
+        try:
+            book = StatbusBook.from_id(session_id=session_id, id=id)
+            break
+        except InvalidSessionException:
+            session_id = input("Cookie invalid. Please insert a new PHPSESSID cookie: ")
+        except BookUnavailableException:
+            #print("Warning: book {} is not available".format(book_id))
+            break
+    return book
+
 def generate_library_range(session_id, id_range: tuple[int, int], workers = 4):
     """
     Generates a local library from a range, [start, end)
@@ -197,19 +213,11 @@ def generate_library_range(session_id, id_range: tuple[int, int], workers = 4):
 
     metadata = []
     print(f"Downloading library books from {id_range[0]} to {id_range[1]}")
+
     try:
-        responses = [pool.apply_async(StatbusBook.from_id, args=(session_id, x,)) for x in range(*id_range)]
+        responses = [pool.apply_async(from_id_wrapper, args=(session_id, x,)) for x in range(*id_range)]
         for res in tqdm(responses):
-            book = None
-            while True:
-                try:
-                    book: StatbusBook = res.get()
-                    break
-                except InvalidSessionException:
-                    session_id = input("Cookie invalid. Please insert a new PHPSESSID cookie: ")
-                except BookUnavailableException:
-                    #print("Warning: book {} is not available".format(book_id))
-                    break
+            book: StatbusBook = res.get()
             if not book: continue
             
             if book.deleted:
