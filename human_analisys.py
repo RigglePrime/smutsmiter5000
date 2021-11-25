@@ -4,7 +4,7 @@ import nltk
 from nltk.text import Text
 from nltk.sentiment import SentimentIntensityAnalyzer
 from nltk.tokenize import word_tokenize, sent_tokenize
-from preprocessing import lemmatize
+from preprocessing import lemmatize, remove_stopwords
 from nltk.probability import FreqDist
 
 # A list of words to closely analyze
@@ -62,7 +62,7 @@ def print_human_readable_info(text):
     # Preprocess: remove newlines, convert some quotes, remove empty sentences, remove double spaces
     stopwords = set(stopwords.words("english"))
     # Tokenize words, remove stopwords (useless words such as 'the')
-    word_list = [word for word in word_tokenize(text) if word.casefold() not in stopwords]
+    word_list = remove_stopwords(word_tokenize(text))
     # Tokenize sentances
     sentances = sent_tokenize(text)
 

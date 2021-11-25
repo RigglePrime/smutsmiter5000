@@ -1,6 +1,19 @@
 from nltk import pos_tag
 from nltk.stem import SnowballStemmer, LancasterStemmer, WordNetLemmatizer
 
+def remove_stopwords(word_list: list[str], language = "english", remove_punctuation = True):
+    """
+    Takes a list of words and removes all stopwords and punctuation (optional) from that list
+    """
+    from nltk.corpus import stopwords
+    stopwords = set(stopwords.words(language))
+
+    if remove_punctuation:
+        from string import punctuation
+        stopwords.update(punctuation)
+
+    return [word for word in word_list if word.casefold() not in stopwords]
+
 def lemmatize(word_list: list[str]) -> list[str]:
     """
     Lemmatization: put the word in the so called "dictionary form", also called the lemma (scarves -> scarf) (stemming would do scarves -> scarv)
