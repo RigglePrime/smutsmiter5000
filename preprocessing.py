@@ -11,6 +11,7 @@ def remove_stopwords(word_list: list[str], language = "english", remove_punctuat
     if remove_punctuation:
         from string import punctuation
         stopwords.update(punctuation)
+        stopwords.update(["``", "''", "...", "..", "--"])
 
     return [word for word in word_list if word.casefold() not in stopwords]
 
