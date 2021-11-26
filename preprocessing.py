@@ -38,14 +38,14 @@ def lemmatize(word_list: list[str]) -> list[str]:
     #print(lemmatized)
     return lemmatized
 
-def stem(word_list: list[str]) -> list[str]:
+def stem(word_list: list[str], language = "english") -> list[str]:
     """
     Perform stemming (helping -> help)
 
     Arguments:
         word_list (list[str]): list of words to be stemmed
     """
-    stemmer = SnowballStemmer("english")
+    stemmer = SnowballStemmer(language)
     #stemmer = LancasterStemmer()
     stemmed = [stemmer.stem(word) for word in word_list]
 
